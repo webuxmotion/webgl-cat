@@ -11,9 +11,14 @@ uniform float time;
 void main() {
   vUv = uv;
   vec3 pos = position;
-  pos.z = mod(position.z + (move * 2000. * aSpeed) + aOffset, 2000.) - 1000.;
+  // NOT STABLE
+  pos.x += sin(move * aSpeed) * 3.;
+  pos.y += sin(move * aSpeed) * 3.;
+  pos.z = mod(position.z + (move * 20. * aSpeed) + aOffset, 2000.) - 1000.;
 
-  vec4 mvPosition = modelViewMatrix * vec4( pos, 1. );
+  vec3 stable = position;
+
+  vec4 mvPosition = modelViewMatrix * vec4(stable, 1. );
   gl_PointSize = 3000. * ( 1. / - mvPosition.z );
   gl_Position = projectionMatrix * mvPosition;
 
