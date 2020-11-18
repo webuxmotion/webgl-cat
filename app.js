@@ -14,6 +14,16 @@ export default class Sketch {
   constructor() {
     this.time = 0;
     this.move = 0;
+    this.next = 0;
+    this.base = 0;
+    this.one = 1;
+    this.two = 0;
+    this.prev = 1;  
+    this.direct = {
+      value: 0,
+      direction: 'line',
+      counter: 0,
+    };
     this.renderer = new THREE.WebGLRenderer( { antialias: true } );
     this.renderer.setSize( window.innerWidth, window.innerHeight );
     document.getElementById('container').appendChild( this.renderer.domElement );
@@ -39,9 +49,8 @@ export default class Sketch {
   }
 
   settings() {
-    let that = this;
     this.settings = {
-      progress: 0,
+      progress: 1,
     };
     this.gui = new dat.GUI();
     this.gui.add(this.settings, "progress", 0, 1, 0.01);
@@ -55,6 +64,52 @@ export default class Sketch {
 
     window.addEventListener('mousewheel', (e) => {
       this.move += e.wheelDeltaY/4000;
+
+      this.next = Math.floor(this.move + 4000)%2;
+
+      if (this.next === 1) {
+        this.prev = 0;
+      } else {
+        this.prev = 1;
+      }
+      
+      let abs = Math.abs(this.move);
+      let floor = Math.floor(abs);
+
+      if (this.next !== this.direct.value) {
+        if (this.direct.counter % 3 === 0) {
+
+          if (this.direct.direction === 'back') {
+            this.direct.direction = 'line';
+            this.one = 1;
+            this.two = 0;
+          } else {
+            this.direct.direction = 'back';
+            this.one = 0;
+            this.two = 1;
+          }
+
+          this.base = floor;
+        }
+        this.direct.value = this.next;
+        this.direct.counter++;
+      }
+
+      let value = (abs - this.base) / 3;
+      if (value > 1) { value = 1 }
+
+      if (this.direct.direction === 'back') {
+        value = 1 - value;
+      }
+
+      let diff = 1 - value;
+      let newVal = 1 - diff * 2;
+
+      if (value < 0.5) {
+        newVal = Math.abs(newVal);
+      }
+
+      this.settings.progress = newVal;
     });
 
     window.addEventListener('mousedown', (e) => {
@@ -150,15 +205,12 @@ export default class Sketch {
 
   render() {
     this.time++;
-    // this.mesh.rotation.x += 0.01;
-    // this.mesh.rotation.y += 0.02;
-    let next = Math.floor(this.move + 40)%2;
-    let prev = (Math.floor(this.move) + 1 + 40)%2;
-    this.material.uniforms.cat.value = this.textures[prev];
-    this.material.uniforms.lion.value = this.textures[next];
+    
+    this.material.uniforms.cat.value = this.textures[this.one];
+    this.material.uniforms.lion.value = this.textures[this.two];
     this.material.uniforms.transition.value = this.settings.progress;
     this.material.uniforms.time.value = this.time;
-    this.material.uniforms.move.value = this.move;
+    this.material.uniforms.move.value = this.move / 3;  
     this.material.uniforms.mouse.value = this.point;
 
     this.renderer.render( this.scene, this.camera );
