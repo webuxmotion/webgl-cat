@@ -1,4 +1,7 @@
 import * as THREE from 'three';
+import gsap from 'gsap';
+import * as dat from 'dat.gui';
+
 let OrbitControls = require('three-orbit-controls')(THREE)
 import fragment from './shaders/fragment.glsl';
 import vertex from './shaders/vertex.glsl';
@@ -21,6 +24,7 @@ export default class Sketch {
 
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
+    this.point = new THREE.Vector2();
 
     this.textures = [
       new THREE.TextureLoader().load(cat),
@@ -28,9 +32,19 @@ export default class Sketch {
     ];
     this.mask = new THREE.TextureLoader().load(gradient),
     //this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.settings();
     this.addMesh();
     this.mouseEffects();
     this.render();
+  }
+
+  settings() {
+    let that = this;
+    this.settings = {
+      progress: 0,
+    };
+    this.gui = new dat.GUI();
+    this.gui.add(this.settings, "progress", 0, 1, 0.01);
   }
 
   mouseEffects() {
@@ -40,7 +54,23 @@ export default class Sketch {
     )
 
     window.addEventListener('mousewheel', (e) => {
-      this.move += e.wheelDeltaY/1000;
+      this.move += e.wheelDeltaY/4000;
+    });
+
+    window.addEventListener('mousedown', (e) => {
+      gsap.to(this.material.uniforms.mousePressed, {
+        duration: 1,
+        value: 1,
+        ease: "elastic.out(1, 0.3)"
+      })
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      gsap.to(this.material.uniforms.mousePressed, {
+        duration: 1,
+        value: 0,
+        ease: "elastic.out(1, 0.3)"
+      })
     });
 
     window.addEventListener( 'mousemove', (e) => {
@@ -51,7 +81,9 @@ export default class Sketch {
 
       // calculate objects intersecting the picking ray
       let intersects = this.raycaster.intersectObjects( [this.test] );
-      console.log(intersects[0].point);
+
+      this.point.x = intersects[0].point.x;
+      this.point.y = intersects[0].point.y;
     }, false );
   }
   
@@ -64,9 +96,11 @@ export default class Sketch {
         cat: { type: "t", value: this.textures[0] },
         lion: { type: "t", value: this.textures[1] },
         mask: { type: "t", value: this.mask },
-        move: { type: "t", value: 0 },
-        time: { type: "t", value: 0 },
+        move: { type: "f", value: 0 },
+        time: { type: "f", value: 0 },
         mouse: { type: "v2", value: null },
+        transition: { type: "f", value: null },
+        mousePressed: { type: "f", value: 0 },
       },
       side: THREE.DoubleSide,
       transparent: true,
@@ -118,9 +152,14 @@ export default class Sketch {
     this.time++;
     // this.mesh.rotation.x += 0.01;
     // this.mesh.rotation.y += 0.02;
+    let next = Math.floor(this.move + 40)%2;
+    let prev = (Math.floor(this.move) + 1 + 40)%2;
+    this.material.uniforms.cat.value = this.textures[prev];
+    this.material.uniforms.lion.value = this.textures[next];
+    this.material.uniforms.transition.value = this.settings.progress;
     this.material.uniforms.time.value = this.time;
     this.material.uniforms.move.value = this.move;
-    this.material.uniforms.mouse.value = this.mouse;
+    this.material.uniforms.mouse.value = this.point;
 
     this.renderer.render( this.scene, this.camera );
   
