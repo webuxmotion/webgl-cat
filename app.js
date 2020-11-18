@@ -19,6 +19,9 @@ export default class Sketch {
     this.camera.position.z = 1000;
     this.scene = new THREE.Scene();
 
+    this.raycaster = new THREE.Raycaster();
+    this.mouse = new THREE.Vector2();
+
     this.textures = [
       new THREE.TextureLoader().load(cat),
       new THREE.TextureLoader().load(lion),
@@ -31,9 +34,25 @@ export default class Sketch {
   }
 
   mouseEffects() {
+    this.test = new THREE.Mesh(
+      new THREE.PlaneBufferGeometry(2000, 2000),
+      new THREE.MeshBasicMaterial()
+    )
+
     window.addEventListener('mousewheel', (e) => {
       this.move += e.wheelDeltaY/1000;
-    })
+    });
+
+    window.addEventListener( 'mousemove', (e) => {
+      this.mouse.x = ( e.clientX / window.innerWidth ) * 2 - 1;
+      this.mouse.y = - ( e.clientY / window.innerHeight ) * 2 + 1;
+      // update the picking ray with the camera and mouse position
+	    this.raycaster.setFromCamera( this.mouse, this.camera );
+
+      // calculate objects intersecting the picking ray
+      let intersects = this.raycaster.intersectObjects( [this.test] );
+      console.log(intersects[0].point);
+    }, false );
   }
   
   addMesh() {
@@ -47,6 +66,7 @@ export default class Sketch {
         mask: { type: "t", value: this.mask },
         move: { type: "t", value: 0 },
         time: { type: "t", value: 0 },
+        mouse: { type: "v2", value: null },
       },
       side: THREE.DoubleSide,
       transparent: true,
@@ -61,6 +81,8 @@ export default class Sketch {
     this.coordinates = new THREE.BufferAttribute(new Float32Array(number*3), 3);
     this.speeds = new THREE.BufferAttribute(new Float32Array(number), 1);
     this.offset = new THREE.BufferAttribute(new Float32Array(number), 1);
+    this.direction = new THREE.BufferAttribute(new Float32Array(number), 1);
+    this.press = new THREE.BufferAttribute(new Float32Array(number), 1);
 
     let index = 0;
 
@@ -75,6 +97,8 @@ export default class Sketch {
         this.coordinates.setXYZ(index, i, j, 0);
         this.offset.setX(index, rand(-1000, 1000));
         this.speeds.setX(index, rand(0.4, 1));
+        this.direction.setX(index, Math.random() > 0.5 ? 1 : -1);
+        this.press.setX(index, rand(0.4, 1));
         index++;
       }
     }
@@ -83,6 +107,8 @@ export default class Sketch {
     this.geometry.setAttribute("aCoordinates", this.coordinates);
     this.geometry.setAttribute("aOffset", this.offset);
     this.geometry.setAttribute("aSpeed", this.speeds);
+    this.geometry.setAttribute("aPress", this.press);
+    this.geometry.setAttribute("aDirection", this.direction);
 
     this.mesh = new THREE.Points( this.geometry, this.material );
 	  this.scene.add( this.mesh );
@@ -94,7 +120,10 @@ export default class Sketch {
     // this.mesh.rotation.y += 0.02;
     this.material.uniforms.time.value = this.time;
     this.material.uniforms.move.value = this.move;
+    this.material.uniforms.mouse.value = this.mouse;
+
     this.renderer.render( this.scene, this.camera );
+  
     window.requestAnimationFrame(this.render.bind(this));
   }
 }
